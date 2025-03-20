@@ -1,0 +1,61 @@
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    background: #333;
+    color: white;
+    padding: 15px;
+    font-size: 1.5em;
+}
+
+.controls {
+    margin: 20px;
+}
+
+input, button {
+    padding: 10px;
+    margin: 10px;
+    font-size: 1em;
+}
+
+button {
+    border: none;
+    cursor: pointer;
+}
+
+button:nth-child(2) {
+    background: yellow;
+}
+
+button:nth-child(3) {
+    background: red;
+    color: white;
+}
+
+.map-container {
+    height: 400px;
+    width: 100%;
+}
+
+#map {
+    height: 100%;
+}
+
+.camera-container {
+    margin-top: 20px;
+}
+
+video, canvas {
+    width: 100%;
+    max-width: 400px;
+}
+
+#status {
+    font-size: 1.2em;
+    color: blue;
+}

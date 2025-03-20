@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blind Assistance App</title>
+    <link rel="stylesheet" href="styles.css">
+    <script defer src="script.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA4MJSt9kk07UpIlSgXno4tsuziPf-bqcI&callback=initMap" async defer></script>
+</head>
+<body>
+    <header>
+        <h1>Blind Assistance App</h1>
+    </header>
+
+    <section class="controls">
+        <input type="text" id="destination" placeholder="Enter Destination">
+        <button onclick="startNavigation()">Navigate</button>
+        <button onclick="startCamera()">Start Obstacle Detection</button>
+        <button onclick="sendSOS()">SOS Emergency</button>
+    </section>
+
+    <section class="map-container">
+        <div id="map"></div>
+    </section>
+
+    <section class="camera-container">
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas"></canvas>
+    </section>
+
+    <p id="status">Status: Waiting for input...</p>
+</body>
+</html>
