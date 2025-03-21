@@ -8,7 +8,7 @@ function initMap() {
             const userPos = { lat: position.coords.latitude, lng: position.coords.longitude };
             map.setCenter(userPos);
             marker.setPosition(userPos);
-        }, () => alert("Geolocation failed. Please allow location access."));
+        }, () => alert("Geolocation failed. Allow location access."));
     } else {
         alert("Geolocation is not supported.");
     }
@@ -24,85 +24,72 @@ function startNavigation() {
     }
 }
 
-// Start camera and detect obstacles
+// Start back camera and detect obstacles
 async function startCamera() {
     const video = document.getElementById("video");
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
     const statusText = document.getElementById("status");
 
-    // Request camera access
-    navigator.mediaDevices.getUserMedia({ video: true })
-        .then((stream) => { video.srcObject = stream; })
-        .catch((err) => alert("Camera access denied!"));
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        video.srcObject = stream;
 
-    // Load the model
-    const model = await cocoSsd.load();
+        const model = await cocoSsd.load();
 
-    // Detect objects
-    async function detect() {
-        const predictions = await model.detect(video);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        async function detect() {
+            const predictions = await model.detect(video);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        predictions.forEach((pred) => {
-            ctx.beginPath();
-            ctx.rect(...pred.bbox);
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = "red";
-            ctx.fillStyle = "red";
-            ctx.stroke();
-            ctx.fillText(pred.class, pred.bbox[0], pred.bbox[1] - 10);
+            predictions.forEach((pred) => {
+                ctx.strokeStyle = "red";
+                ctx.lineWidth = 2;
+                ctx.strokeRect(...pred.bbox);
+                ctx.fillText(pred.class, pred.bbox[0], pred.bbox[1] - 10);
 
-            if (pred.class === "person" || pred.class === "car") {
-                statusText.innerText = `Warning! Obstacle detected: ${pred.class}`;
-                speakText(`Warning! ${pred.class} ahead.`);
-            }
-        });
+                if (["person", "car"].includes(pred.class)) {
+                    statusText.innerText = `Warning! ${pred.class} ahead.`;
+                    speakText(`Warning! ${pred.class} ahead.`);
+                }
+            });
 
-        requestAnimationFrame(detect);
+            requestAnimationFrame(detect);
+        }
+        detect();
+    } catch (err) {
+        alert("Camera access denied!");
     }
-    detect();
 }
 
-// Voice output function
+// Voice feedback
 function speakText(message) {
     let speech = new SpeechSynthesisUtterance(message);
     speech.lang = "en-US";
-    speech.rate = 1;
-    speech.pitch = 1;
     window.speechSynthesis.speak(speech);
 }
 
-// SOS Emergency Function
+// SOS Emergency
 function sendSOS() {
-    alert("SOS alert sent to emergency contacts!");
+    alert("SOS alert sent!");
     speakText("Emergency alert activated.");
 }
+
+// Voice command setup
 window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recognition = new SpeechRecognition();
-
 recognition.continuous = true;
 recognition.lang = "en-US";
-recognition.interimResults = false;
 
-recognition.onresult = function (event) {
+recognition.onresult = (event) => {
     const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
-
-    if (transcript.includes("open navigation")) {
-        startNavigation(); // Call your navigation function
-    } else if (transcript.includes("detect obstacles")) {
-        detectObstacles(); // Call obstacle detection function
-    } else if (transcript.includes("send sos")) {
-        sendSOS(); // Call SOS function
-    }
+    if (transcript.includes("open navigation")) startNavigation();
+    else if (transcript.includes("detect obstacles")) startCamera();
+    else if (transcript.includes("send sos")) sendSOS();
 };
 
-function startListening() {
-    recognition.start();
-}
-
-// Start listening for voice commands when the page loads
+// Auto-start voice commands and camera
 document.addEventListener("DOMContentLoaded", () => {
-    startListening();
+    recognition.start();
+    startCamera();
 });
