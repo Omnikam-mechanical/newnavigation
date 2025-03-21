@@ -79,3 +79,30 @@ function sendSOS() {
     alert("SOS alert sent to emergency contacts!");
     speakText("Emergency alert activated.");
 }
+window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const recognition = new SpeechRecognition();
+
+recognition.continuous = true;
+recognition.lang = "en-US";
+recognition.interimResults = false;
+
+recognition.onresult = function (event) {
+    const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
+
+    if (transcript.includes("open navigation")) {
+        startNavigation(); // Call your navigation function
+    } else if (transcript.includes("detect obstacles")) {
+        detectObstacles(); // Call obstacle detection function
+    } else if (transcript.includes("send sos")) {
+        sendSOS(); // Call SOS function
+    }
+};
+
+function startListening() {
+    recognition.start();
+}
+
+// Start listening for voice commands when the page loads
+document.addEventListener("DOMContentLoaded", () => {
+    startListening();
+});
