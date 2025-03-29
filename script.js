@@ -8,7 +8,7 @@ function initMap() {
             const userPos = { lat: position.coords.latitude, lng: position.coords.longitude };
             map.setCenter(userPos);
             marker.setPosition(userPos);
-        }, () => alert("Geolocation failed. Allow location access."));
+        }, () => alert("Geolocation failed. Please allow location access."));
     } else {
         alert("Geolocation is not supported.");
     }
@@ -24,72 +24,87 @@ function startNavigation() {
     }
 }
 
-// Start back camera and detect obstacles
+// Start camera and detect obstacles
 async function startCamera() {
     const video = document.getElementById("video");
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
     const statusText = document.getElementById("status");
 
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        video.srcObject = stream;
+    // Request camera access
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+        .then((stream) => { video.srcObject = stream; })
+        .catch((err) => alert("Camera access denied!"));
 
-        const model = await cocoSsd.load();
+    // Load the model
+    const model = await cocoSsd.load();
 
-        async function detect() {
-            const predictions = await model.detect(video);
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // Detect objects
+    async function detect() {
+        const predictions = await model.detect(video);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            predictions.forEach((pred) => {
-                ctx.strokeStyle = "red";
-                ctx.lineWidth = 2;
-                ctx.strokeRect(...pred.bbox);
-                ctx.fillText(pred.class, pred.bbox[0], pred.bbox[1] - 10);
+        predictions.forEach((pred) => {
+            ctx.beginPath();
+            ctx.rect(...pred.bbox);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = "red";
+            ctx.fillStyle = "red";
+            ctx.stroke();
+            ctx.fillText(pred.class, pred.bbox[0], pred.bbox[1] - 10);
 
-                if (["person", "car"].includes(pred.class)) {
-                    statusText.innerText = `Warning! ${pred.class} ahead.`;
-                    speakText(`Warning! ${pred.class} ahead.`);
-                }
-            });
+            if (pred.class === "person" || pred.class === "car") {
+                statusText.innerText = `Warning! Obstacle detected: ${pred.class}`;
+                speakText(`Warning! ${pred.class} ahead.`);
+            }
+        });
 
-            requestAnimationFrame(detect);
-        }
-        detect();
-    } catch (err) {
-        alert("Camera access denied!");
+        requestAnimationFrame(detect);
     }
+    detect();
 }
 
-// Voice feedback
+// Voice output function
 function speakText(message) {
     let speech = new SpeechSynthesisUtterance(message);
     speech.lang = "en-US";
+    speech.rate = 1;
+    speech.pitch = 1;
     window.speechSynthesis.speak(speech);
 }
 
-// SOS Emergency
+// SOS Emergency Function
 function sendSOS() {
-    alert("SOS alert sent!");
+    alert("SOS alert sent to emergency contacts!");
     speakText("Emergency alert activated.");
 }
 
-// Voice command setup
+// Voice Command System
 window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recognition = new SpeechRecognition();
+
 recognition.continuous = true;
 recognition.lang = "en-US";
+recognition.interimResults = false;
 
-recognition.onresult = (event) => {
+recognition.onresult = function (event) {
     const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
-    if (transcript.includes("open navigation")) startNavigation();
-    else if (transcript.includes("detect obstacles")) startCamera();
-    else if (transcript.includes("send sos")) sendSOS();
+
+    if (transcript.includes("start navigation")) {
+        startNavigation();
+    } else if (transcript.includes("detect obstacles")) {
+        startCamera();
+    } else if (transcript.includes("send sos")) {
+        sendSOS();
+    }
 };
 
-// Auto-start voice commands and camera
-document.addEventListener("DOMContentLoaded", () => {
+function startListening() {
     recognition.start();
-    startCamera();
+}
+
+// Start listening for voice commands when the page loads
+document.addEventListener("DOMContentLoaded", () => {
+    startListening();
 });
