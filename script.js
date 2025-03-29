@@ -1,4 +1,4 @@
-// Initialize Google Maps
+// Initialize Google Maps & Get User Location
 function initMap() {
     const map = new google.maps.Map(document.getElementById("map"), { zoom: 14 });
     const marker = new google.maps.Marker({ map: map, title: "Your Location" });
@@ -14,32 +14,27 @@ function initMap() {
     }
 }
 
-// Start navigation
-function startNavigation() {
-    let destination = document.getElementById("destination").value;
-    if (destination) {
-        window.open(`https://www.google.com/maps/dir/?api=1&destination=${destination}`, "_blank");
-    } else {
-        alert("Please enter a destination.");
-    }
-}
-
-// Start camera and detect obstacles
+// Automatically Start Back Camera & Object Detection
 async function startCamera() {
     const video = document.getElementById("video");
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
     const statusText = document.getElementById("status");
 
-    // Request camera access
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-        .then((stream) => { video.srcObject = stream; })
-        .catch((err) => alert("Camera access denied!"));
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: "environment" } // Use back camera
+        });
+        video.srcObject = stream;
+    } catch (error) {
+        alert("Camera access denied! Please allow permissions.");
+        return;
+    }
 
-    // Load the model
+    // Load AI Model for Object Detection
     const model = await cocoSsd.load();
 
-    // Detect objects
+    // Detect Objects Continuously
     async function detect() {
         const predictions = await model.detect(video);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -54,7 +49,7 @@ async function startCamera() {
             ctx.stroke();
             ctx.fillText(pred.class, pred.bbox[0], pred.bbox[1] - 10);
 
-            if (pred.class === "person" || pred.class === "car") {
+            if (pred.class === "person" || pred.class === "car" || pred.class === "bicycle") {
                 statusText.innerText = `Warning! Obstacle detected: ${pred.class}`;
                 speakText(`Warning! ${pred.class} ahead.`);
             }
@@ -65,46 +60,46 @@ async function startCamera() {
     detect();
 }
 
-// Voice output function
-function speakText(message) {
-    let speech = new SpeechSynthesisUtterance(message);
-    speech.lang = "en-US";
-    speech.rate = 1;
-    speech.pitch = 1;
-    window.speechSynthesis.speak(speech);
-}
-
-// SOS Emergency Function
-function sendSOS() {
-    alert("SOS alert sent to emergency contacts!");
-    speakText("Emergency alert activated.");
-}
-
-// Voice Command System
+// Voice Recognition for Destination Input
 window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recognition = new SpeechRecognition();
-
-recognition.continuous = true;
+recognition.continuous = false;
 recognition.lang = "en-US";
 recognition.interimResults = false;
 
-recognition.onresult = function (event) {
-    const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
-
-    if (transcript.includes("start navigation")) {
-        startNavigation();
-    } else if (transcript.includes("detect obstacles")) {
-        startCamera();
-    } else if (transcript.includes("send sos")) {
-        sendSOS();
-    }
-};
-
-function startListening() {
+// Start Voice Input for Destination
+function voiceInputDestination() {
+    speakText("Please say your destination.");
     recognition.start();
 }
 
-// Start listening for voice commands when the page loads
+// Capture & Process Voice Input for Destination
+recognition.onresult = function (event) {
+    const transcript = event.results[0][0].transcript;
+    document.getElementById("destination").value = transcript;
+    speakText(`Destination set to ${transcript}. Starting navigation.`);
+    startNavigation();
+};
+
+// Start Navigation in Google Maps
+function startNavigation() {
+    let destination = document.getElementById("destination").value;
+    if (destination) {
+        window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`, "_blank");
+    } else {
+        speakText("Please enter a destination.");
+    }
+}
+
+// Function for Voice Feedback
+function speakText(message) {
+    let speech = new SpeechSynthesisUtterance(message);
+    speech.lang = "en-US";
+    window.speechSynthesis.speak(speech);
+}
+
+// Automatically Start Camera, Object Detection & Voice Command on Page Load
 document.addEventListener("DOMContentLoaded", () => {
-    startListening();
+    startCamera();
+    voiceInputDestination();
 });
