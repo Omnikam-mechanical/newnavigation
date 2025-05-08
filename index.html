@@ -8,6 +8,8 @@
     <script defer src="script.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA4MJSt9kk07UpIlSgXno4tsuziPf-bqcI&callback=initMap" async defer></script>
+    <link rel="manifest" href="manifest.json">
+
 </head>
 <body>
     <header>
@@ -103,6 +105,16 @@
         }
 
         window.onload = initYOLOv5;
+        // Registering Service Worker for PWA
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js").then(() => {
+            console.log("Service Worker Registered");
+        });
+    });
+}
+
     </script>
 </body>
 </html>
+gitr
