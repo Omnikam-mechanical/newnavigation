@@ -3,33 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Blind Navigation</title>
+    <title>AI Navigation with YOLOv5</title>
     <link rel="stylesheet" href="styles.css">
     <script defer src="script.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA4MJSt9kk07UpIlSgXno4tsuziPf-bqcI&callback=initMap" async defer></script>
 </head>
 <body>
+    <header>
+        <h1>AI Navigation with YOLOv5</h1>
+    </header>
 
-<header>
-    <h1>AI Blind Navigation</h1>
-</header>
+    <section class="map-container">
+        <h2>Navigation Map</h2>
+        <input type="text" id="destination" placeholder="Enter destination">
+        <button onclick="voiceInputDestination()">🎤 Voice Destination</button>
+        <button onclick="startNavigation()">Start Navigation</button>
+        <div id="map"></div>
+    </section>
 
-<section class="map-container">
-    <h2>Navigation Map</h2>
-    <input type="text" id="destination" placeholder="Enter destination">
-    <button onclick="startNavigation()">Start Navigation</button>
-    <button onclick="sendSOS()">Send SOS</button>
-    <div id="map"></div>
-</section>
+    <section class="camera-container">
+        <h2>Obstacle Detection (YOLOv5)</h2>
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas"></canvas>
+        <p id="status">Detecting...</p>
+    </section>
 
-<section class="camera-container">
-    <h2>Obstacle Detection</h2>
-    <video id="video" autoplay playsinline></video>
-    <canvas id="canvas"></canvas>
-    <p id="status">Detecting...</p>
-</section>
+    <script>
+        async function initYOLOv5() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const statusText = document.getElementById('status');
 
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            video.srcObject = stream;
+
+            const model = await cocoSsd.load();
+
+            async function detectObjects() {
+                const predictions = await model.detect(video);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                predictions.forEach(pred => {
+                    ctx.beginPath();
+                    ctx.rect(...pred.bbox);
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = 'red';
+                    ctx.stroke();
+                    ctx.fillStyle = 'red';
+                    ctx.fillText(pred.class, pred.bbox[0], pred.bbox[1] - 10);
+
+                    if (pred.class === 'person' || pred.class === 'car') {
+                        statusText.innerText = `Warning! Obstacle: ${pred.class}`;
+                        speakText(`Warning! ${pred.class} ahead.`);
+                    }
+                });
+
+                requestAnimationFrame(detectObjects);
+            }
+
+            detectObjects();
+        }
+
+        async function initMap() {
+            const map = new google.maps.Map(document.getElementById('map'), { zoom: 14 });
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    map.setCenter({ lat: position.coords.latitude, lng: position.coords.longitude });
+                });
+            }
+        }
+
+        function voiceInputDestination() {
+            speakText("Please say your destination.");
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = "en-US";
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById("destination").value = transcript;
+                speakText(`Destination set to ${transcript}. Starting navigation.`);
+                startNavigation();
+            };
+            recognition.start();
+        }
+
+        function startNavigation() {
+            const destination = document.getElementById('destination').value;
+            if (destination) {
+                window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`, '_blank');
+            }
+        }
+
+        function speakText(message) {
+            const speech = new SpeechSynthesisUtterance(message);
+            speech.lang = 'en-US';
+            window.speechSynthesis.speak(speech);
+        }
+
+        window.onload = initYOLOv5;
+    </script>
 </body>
 </html>
