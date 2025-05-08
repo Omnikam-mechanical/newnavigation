@@ -99,12 +99,19 @@
         }
 
         function speakText(message) {
-            const speech = new SpeechSynthesisUtterance(message);
-            speech.lang = 'en-US';
-            window.speechSynthesis.speak(speech);
-        }
+    const speech = new SpeechSynthesisUtterance(message);
+    speech.lang = 'en-US';
+    speech.rate = 1;  // Adjust speed (1 is normal)
+    speech.pitch = 1; // Adjust pitch (1 is normal)
+    window.speechSynthesis.speak(speech);
+}
 
         window.onload = initYOLOv5;
+        if (pred.class === "person" || pred.class === "car") {
+    statusText.innerText = `Warning! Obstacle detected: ${pred.class}`;
+    speakText(`Warning! ${pred.class} ahead.`);
+}
+
         // Registering Service Worker for PWA
 if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
