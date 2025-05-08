@@ -3,17 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Navigation with YOLOv5</title>
+    <title>AI Navigation with YOLOv5 (ONNX)</title>
     <link rel="stylesheet" href="styles.css">
     <script defer src="script.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA4MJSt9kk07UpIlSgXno4tsuziPf-bqcI&callback=initMap" async defer></script>
-    <link rel="manifest" href="manifest.json">
-
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap" async defer></script>
 </head>
 <body>
     <header>
-        <h1>AI Navigation with YOLOv5</h1>
+        <h1>AI Navigation with YOLOv5 (ONNX)</h1>
     </header>
 
     <section class="map-container">
@@ -25,14 +23,14 @@
     </section>
 
     <section class="camera-container">
-        <h2>Obstacle Detection (YOLOv5)</h2>
+        <h2>Obstacle Detection (YOLOv5 ONNX)</h2>
         <video id="video" autoplay playsinline></video>
         <canvas id="canvas"></canvas>
         <p id="status">Detecting...</p>
     </section>
 
     <script>
-        async function initYOLOv5() {
+        async function initYOLOv5ONNX() {
             const video = document.getElementById('video');
             const canvas = document.getElementById('canvas');
             const ctx = canvas.getContext('2d');
@@ -41,27 +39,32 @@
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
             video.srcObject = stream;
 
-            const model = await cocoSsd.load();
+            const session = await ort.InferenceSession.create('https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx');
 
             async function detectObjects() {
-                const predictions = await model.detect(video);
+                const tensor = tf.browser.fromPixels(video).resizeNearestNeighbor([640, 640]).toFloat().div(tf.scalar(255)).expandDims(0);
+                const feeds = { 'images': tensor };  
+                const results = await session.run(feeds);
+
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                predictions.forEach(pred => {
-                    ctx.beginPath();
-                    ctx.rect(...pred.bbox);
-                    ctx.lineWidth = 2;
-                    ctx.strokeStyle = 'red';
-                    ctx.stroke();
-                    ctx.fillStyle = 'red';
-                    ctx.fillText(pred.class, pred.bbox[0], pred.bbox[1] - 10);
+                const boxes = results.output0.data;
+                const scores = results.output1.data;
+                const classes = results.output2.data;
 
-                    if (pred.class === 'person' || pred.class === 'car') {
-                        statusText.innerText = `Warning! Obstacle: ${pred.class}`;
-                        speakText(`Warning! ${pred.class} ahead.`);
+                for (let i = 0; i < scores.length; i++) {
+                    if (scores[i] > 0.5) { // Confidence Threshold
+                        const [x, y, w, h] = boxes.slice(i * 4, (i + 1) * 4);
+                        ctx.strokeStyle = 'red';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(x, y, w, h);
+                        ctx.fillStyle = 'red';
+                        ctx.fillText(`Object ${Math.round(scores[i] * 100)}%`, x, y - 10);
+                        statusText.innerText = `Warning! Obstacle detected.`;
+                        speakText(`Warning! Obstacle detected.`);
                     }
-                });
+                }
 
                 requestAnimationFrame(detectObjects);
             }
@@ -99,29 +102,12 @@
         }
 
         function speakText(message) {
-    const speech = new SpeechSynthesisUtterance(message);
-    speech.lang = 'en-US';
-    speech.rate = 1;  // Adjust speed (1 is normal)
-    speech.pitch = 1; // Adjust pitch (1 is normal)
-    window.speechSynthesis.speak(speech);
-}
+            const speech = new SpeechSynthesisUtterance(message);
+            speech.lang = 'en-US';
+            window.speechSynthesis.speak(speech);
+        }
 
-        window.onload = initYOLOv5;
-        if (pred.class === "person" || pred.class === "car") {
-    statusText.innerText = `Warning! Obstacle detected: ${pred.class}`;
-    speakText(`Warning! ${pred.class} ahead.`);
-}
-
-        // Registering Service Worker for PWA
-if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js").then(() => {
-            console.log("Service Worker Registered");
-        });
-    });
-}
-
+        window.onload = initYOLOv5ONNX;
     </script>
 </body>
 </html>
-gitr
