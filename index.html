@@ -44,24 +44,29 @@
 
             async function detectObjects() {
                 const tensor = tf.browser.fromPixels(video).resizeNearestNeighbor([640, 640]).toFloat().div(tf.scalar(255)).expandDims(0);
-                const feeds = { 'images': tensor };  
-                const results = await session.run(feeds);
+                const results = await session.run({ images: tensor });
 
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                const boxes = results.output0.data;
-                const scores = results.output1.data;
-                const classes = results.output2.data;
+                const boxes = results['boxes'].data;
+                const scores = results['scores'].data;
+                const classes = results['classes'].data;
 
                 for (let i = 0; i < scores.length; i++) {
                     if (scores[i] > 0.5) { // Confidence Threshold
-                        const [x, y, w, h] = boxes.slice(i * 4, (i + 1) * 4);
-                        ctx.strokeStyle = 'red';
+                        const [x1, y1, x2, y2] = boxes.slice(i * 4, (i + 1) * 4);
+                        const width = x2 - x1;
+                        const height = y2 - y1;
+
+                        ctx.beginPath();
+                        ctx.rect(x1, y1, width, height);
                         ctx.lineWidth = 2;
-                        ctx.strokeRect(x, y, w, h);
+                        ctx.strokeStyle = 'red';
+                        ctx.stroke();
                         ctx.fillStyle = 'red';
-                        ctx.fillText(`Object ${Math.round(scores[i] * 100)}%`, x, y - 10);
+                        ctx.fillText(`Object ${Math.round(scores[i] * 100)}%`, x1, y1 - 10);
+
                         statusText.innerText = `Warning! Obstacle detected.`;
                         speakText(`Warning! Obstacle detected.`);
                     }
@@ -109,14 +114,15 @@
         }
 
         window.onload = initYOLOv5ONNX;
-    // Registering Service Worker for PWA
-if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js").then(() => {
-            console.log("Service Worker Registered");
+        
+    if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+            navigator.serviceWorker.register("./service-worker.js").then(() => {
+                console.log("Service Worker Registered");
+            });
         });
-    });
-}
+    }
+</script>
     </script>
 </body>
 </html>
